@@ -1,0 +1,50 @@
+<!---
+//--------------------------------------------------------------------------------------------------
+// Shadow shader for standard material (rev 1)
+//--------------------------------------------------------------------------------------------------
+--->
+<glfx>
+
+<include name="lib/platform.glfxh" />
+<include name="lib/skinning.glfxh" />
+
+<output name="VS_OUTPUT">
+	<field name="POSITION" lname="position" type="vec4" prec="highp" />
+</output>
+
+<code><![CDATA[
+
+//--------------------------------------------------------------------------------------------------
+// Automatic Parameters
+//--------------------------------------------------------------------------------------------------
+uniform float4x4 mWorldViewProjection;
+
+//--------------------------------------------------------------------------------------------------
+// Vertex shader code
+//--------------------------------------------------------------------------------------------------
+VS_OUTPUT vs(in VS_NOSKIN_INPUT vIn)
+{
+	//
+	// Output structure declaration
+	VS_OUTPUT Out;
+	
+	//
+	// Compute projected position
+	Out.position = mul(vIn.position0, mWorldViewProjection);
+
+	return Out;
+}
+
+float4 ps(VS_OUTPUT vIn)
+{
+	return vec4(1,1,1,1);
+}
+
+]]></code>
+
+<tech name="Solid">
+	<vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" />
+	<ps name="ps" />
+</tech>
+
+</glfx>

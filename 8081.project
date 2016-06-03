@@ -1,0 +1,55 @@
+<project project_version="1.0">
+    <editor_settings>
+        <snap_x enabled="false" value="100.000000"/>
+        <snap_y enabled="false" value="100.000000"/>
+        <snap_z enabled="false" value="100.000000"/>
+        <snap_rulers enabled="false" threshold="10.000000"/>
+        <translate_x enabled="true"/>
+        <translate_y enabled="true"/>
+        <translate_z enabled="true"/>
+        <grid enabled="true" position_x="0.000000" position_y="0.000000" position_z="0.000000" size_x="100.000000" size_y="100.000000" subdivision_x="10" subdivision_y="10"/>
+        <show_markers enabled="false"/>
+        <camera position_x="0.000000" position_y="-172.463776" position_z="101.273132" target_x="0.000000" target_y="0.000000" target_z="0.000000" znear="10.000000" zfar="100000.000000" zoom="0.200000" camera_angle_x="-100.000000" camera_angle_z="0.000000" type="1" arcball_x="0.000000" arcball_y="-200.000000" arcball_z="0.000000" camera_up_x="0.000000" camera_up_y="0.000000" camera_up_z="1.000000"/>
+        <scene_explorer scene_explorer_add_folder="Root">
+            <scene_explorer_item scene_explorer_item_name="Root" scene_explorer_item_text="Root" scene_explorer_item_type="0" scene_explorer_item_expanded="false" scene_explorer_item_parent="NULL"/>
+        </scene_explorer>
+        <recent_file_list max_recent_file="5"/>
+    </editor_settings>
+    <extensions>
+        <extension name="Ext8081"/>
+    </extensions>
+    <project_settings>
+        <general>
+            <setting name="generalname" value="Bobi_The_Bot"/>
+            <setting name="generalgeneric" value="Generic"/>
+            <setting name="generaltmp" value="Tmp"/>
+            <setting name="generalicon" value="icon.png"/>
+            <setting name="generalsplashscreen" value="splashscreen.png"/>
+            <setting name="generalmajor" value="0"/>
+            <setting name="generalminor" value="0"/>
+            <desktop>
+                <setting name="desktopwidth" value="0"/>
+                <setting name="desktopheight" value="0"/>
+                <windows/>
+                <linux/>
+                <mac/>
+            </desktop>
+            <console>
+                <ps4/>
+                <ps3/>
+                <xboxone/>
+                <xbox360/>
+            </console>
+            <mobile>
+                <android>
+                    <setting name="androidsdkid" value="0"/>
+                    <setting name="androidkeystore" value=""/>
+                    <setting name="androidkeystorepwd" value=""/>
+                    <setting name="androidkeyalias" value=""/>
+                    <setting name="androidkeyaliaspwd" value=""/>
+                </android>
+                <ios/>
+            </mobile>
+        </general>
+    </project_settings>
+</project>

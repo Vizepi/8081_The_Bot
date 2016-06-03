@@ -1,0 +1,112 @@
+<!--- // skinning.glfxh -->
+<glfx>
+
+<texture name="BoneMapTexture" />
+
+<sampler name="BoneMapSampler" type="sampler2D">
+	<texture>BoneMapTexture</texture>
+	<min>POINT</min><mag>POINT</mag><mip>NONE</mip>
+	<wrapu>CLAMP</wrapu><wrapv>CLAMP</wrapv>
+</sampler>
+
+<input name="VS_SKIN_INPUT">
+	<field name="TEXCOORD0" lname="texcoord" type="vec2" />
+	
+	<field name="POSITION0" lname="position0" type="vec4" />
+	<field name="TANGENT0" lname="tangent0" type="vec3" />
+	<field name="BINORMAL0" lname="binormal0" type="vec3" />
+	<field name="NORMAL0" lname="normal0" type="vec3" />
+	
+	<field name="POSITION1" lname="position1" type="vec4" />
+	<field name="TANGENT1" lname="tangent1" type="vec3" />
+	<field name="BINORMAL1" lname="binormal1" type="vec3" />
+	<field name="NORMAL1" lname="normal1" type="vec3" />
+	
+	<field name="POSITION2" lname="position2" type="vec4" />
+	<field name="TANGENT2" lname="tangent2" type="vec3" />
+	<field name="BINORMAL2" lname="binormal2" type="vec3" />
+	<field name="NORMAL2" lname="normal2" type="vec3" />
+	
+	<field name="BLENDWEIGHT" lname="weights" type="vec4" />
+	<field name="BLENDINDICES" lname="indices" type="vec4" />
+</input>
+
+<input name="VS_NOSKIN_INPUT">
+	<field name="TEXCOORD0" lname="texcoord" type="vec2" />
+	
+	<field name="POSITION0" lname="position0" type="vec4" />
+	<field name="TANGENT0" lname="tangent0" type="vec3" />
+	<field name="BINORMAL0" lname="binormal0" type="vec3" />
+	<field name="NORMAL0" lname="normal0" type="vec3" />
+</input>
+
+<code><![CDATA[
+
+//--------------------------------------------------------------------------------------------------
+// Texture with bones matrix
+//--------------------------------------------------------------------------------------------------
+float4 vBoneMapSize;
+
+//
+// Return the bone matrix at index u
+//
+float4x4 sample_bone_matrix(mediump float u)
+{
+	float4	r0 = tex2D(BoneMapSampler, vec2(u + vBoneMapSize.x * 0.0, 0.5));
+	float4	r1 = tex2D(BoneMapSampler, vec2(u + vBoneMapSize.x * 1.0, 0.5));
+	float4	r2 = tex2D(BoneMapSampler, vec2(u + vBoneMapSize.x * 2.0, 0.5));
+	float4	r3 = vec4(0.0, 0.0, 0.0, 1.0);
+	
+	return mat4(r0.x,r1.x,r2.x,r3.x,
+				r0.y,r1.y,r2.y,r3.y,
+				r0.z,r1.z,r2.z,r3.z,
+				r0.w,r1.w,r2.w,r3.w);
+}
+
+//
+//
+//
+void skin(inout VS_SKIN_INPUT v)
+{
+	v.indices = (v.indices * 3.0 + 0.5) * vBoneMapSize.xxxx;
+		
+	float4x4 m0 = sample_bone_matrix(v.indices.x);
+	float4x4 m1 = sample_bone_matrix(v.indices.y);
+	float4x4 m2 = sample_bone_matrix(v.indices.z);
+	
+	v.position0 = vec4(mul(vec4(v.position0.xyz,1.0), m0).xyz * v.weights.x
+				     + mul(vec4(v.position1.xyz,1.0), m1).xyz * v.weights.y
+				     + mul(vec4(v.position2.xyz,1.0), m2).xyz * v.weights.z, 1.0);
+
+	v.tangent0 = mul(v.tangent0.xyz, mat3(m0)) * v.weights.x
+			   + mul(v.tangent1.xyz, mat3(m1)) * v.weights.y
+			   + mul(v.tangent2.xyz, mat3(m2)) * v.weights.z;
+
+	v.binormal0 = mul(v.binormal0.xyz, mat3(m0)) * v.weights.x
+				+ mul(v.binormal1.xyz, mat3(m1)) * v.weights.y
+				+ mul(v.binormal2.xyz, mat3(m2)) * v.weights.z;
+
+	v.normal0 = mul(v.normal0.xyz, mat3(m0)) * v.weights.x
+			  + mul(v.normal1.xyz, mat3(m1)) * v.weights.y
+			  + mul(v.normal2.xyz, mat3(m2)) * v.weights.z;
+}
+
+//
+//
+//
+void wind(inout float3 v, highp float time, float2 speed, mediump float freq, mediump float scale)
+{
+	highp float time_freq = 6.283185 * time * freq;
+	v.xy += vec2(cos(time_freq),sin(time_freq)) * speed * v.z / scale;
+}
+
+//
+//
+//
+void wind(inout float3 v, float2 offset, mediump float scale)
+{
+	v.xy += offset * v.z * v.z / scale;
+}
+
+]]></code>
+</glfx>

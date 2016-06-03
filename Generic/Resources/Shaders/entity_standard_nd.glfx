@@ -1,0 +1,136 @@
+<!--- // entity_standard_nd.glfx -->
+<glfx>
+
+<include name="lib/platform.glfxh" />
+<include name="lib/lighting.glfxh" />
+<include name="lib/skinning.glfxh" />
+
+<texture name="NormalMap" />
+<sampler name="NormalMapSampler" type="sampler2D">
+	<texture>NormalMap</texture>
+	<min>LINEAR</min><mag>LINEAR</mag><mip>LINEAR</mip>
+	<wrapu>REPEAT</wrapu><wrapv>REPEAT</wrapv>
+</sampler>
+
+<output name="VS_OUTPUT">
+	<field name="POSITION" lname="position" type="vec4" prec="highp" />
+	<field name="TEXCOORD0" lname="texcoord_depth" type="vec4" prec="highp" />
+	<field name="TEXCOORD1" lname="worldNormal" type="vec4" prec="mediump" />
+	<field name="TEXCOORD2" lname="worldTangent" type="vec3" prec="mediump" />
+	<field name="TEXCOORD3" lname="worldBinormal" type="vec3" prec="mediump" />
+</output>
+
+<code><![CDATA[
+//--------------------------------------------------------------------------------------------------
+// Automatic Parameters
+//--------------------------------------------------------------------------------------------------
+uniform float4x4 mWorldIT;
+uniform float4x4 mWorldViewProjection;
+
+//--------------------------------------------------------------------------------------------------
+// Material Parameters
+//--------------------------------------------------------------------------------------------------
+mediump float    Shininess;
+uniform bool 	 FlipNormalMapY;
+
+
+
+//--------------------------------------------------------------------------------------------------
+// Vertex shader code
+//--------------------------------------------------------------------------------------------------
+VS_OUTPUT vs_noskin(VS_NOSKIN_INPUT vIn)
+{
+	VS_OUTPUT Out;
+
+	Out.position = mul(vIn.position0, mWorldViewProjection);
+	float2 depth = Out.position.zw;
+
+	//
+	// Compute normal in world space
+	Out.worldNormal.xyz = normalize(mul(vIn.normal0, mat3(mWorldIT)).xyz);
+
+	//
+	// Compute tangent in world space
+	Out.worldTangent = normalize(mul(vIn.tangent0, mat3(mWorldIT)).xyz);
+	if (FlipNormalMapY == true)
+	{
+		Out.worldTangent = -Out.worldTangent;
+	}
+
+	//
+	// Compute binormal in world space
+	Out.worldBinormal = normalize(mul(vIn.binormal0, mat3(mWorldIT)).xyz);
+
+	//
+	// Forward texture coordinates
+	Out.texcoord_depth.xy = vIn.texcoord;
+	Out.texcoord_depth.zw = depth;
+	Out.worldNormal.w = Shininess / 128.0;
+
+	return Out;
+}
+VS_OUTPUT vs_skin(VS_SKIN_INPUT vIn)
+{
+	VS_OUTPUT Out;
+
+	skin(vIn);
+	Out.position = mul(vIn.position0, mWorldViewProjection);
+	float2 depth = Out.position.zw;
+	//
+	// Compute normal in world space
+	Out.worldNormal.xyz = normalize(mul(vIn.normal0, mat3(mWorldIT)).xyz);
+
+	//
+	// Compute tangent in world space
+	Out.worldTangent = normalize(mul(vIn.tangent0, mat3(mWorldIT)).xyz);
+	if (FlipNormalMapY == true)
+	{
+		Out.worldTangent = -Out.worldTangent;
+	}
+
+	//
+	// Compute binormal in world space
+	Out.worldBinormal = normalize(mul(vIn.binormal0, mat3(mWorldIT)).xyz);
+
+	//
+	// Forward texture coordinates
+	Out.texcoord_depth.xy = vIn.texcoord;
+	Out.texcoord_depth.zw = depth;
+	Out.worldNormal.w = Shininess / 128.0;
+
+	return Out;
+}
+
+//--------------------------------------------------------------------------------------------------
+// Pixel shader code
+//--------------------------------------------------------------------------------------------------
+float4 ps(VS_OUTPUT vIn)
+{
+	//
+	// Get the normal from the normal map
+	float3 normalMapTexel = UnpackNormalMap(NormalMapSampler, vIn.texcoord_depth.xy);
+
+	//
+	// Compute normal map
+	float3 N = ApplyNormalMapping(normalMapTexel, vIn.worldTangent, vIn.worldBinormal, vIn.worldNormal.xyz);
+	
+	//
+	// Pack the outputs into RGBA8
+	return vec4(N * 0.5 + 0.5, vIn.worldNormal.w);
+}
+
+]]></code>
+
+<tech name="Solid">
+	<vs name="vs_noskin" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" />
+	<ps name="ps" />
+</tech>
+
+<!----
+<tech name="SolidSkinning">
+	<vs name="vs_skin" input="VS_SKIN_INPUT" output="VS_OUTPUT" />
+	<ps name="ps" />
+</tech>
+--->
+
+</glfx>

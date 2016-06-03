@@ -1,0 +1,234 @@
+<!--- // entity_standard.glfx -->
+<glfx>
+
+<include name="lib/platform.glfxh" />
+<include name="lib/lighting.glfxh" />
+<include name="lib/skinning.glfxh" />
+
+<texture name="DiffuseMap" />
+<texture name="SpecularMap" />
+<texture name="LightBufferMap" />
+<texture name="ShadowMap" />
+
+<sampler name="DiffuseMapSampler" type="sampler2D">
+	<texture>DiffuseMap</texture>
+	<min>LINEAR</min><mag>LINEAR</mag><mip>POINT</mip>
+	<wrapu>REPEAT</wrapu><wrapv>REPEAT</wrapv>
+</sampler>
+<sampler name="SpecularMapSampler" type="sampler2D">
+	<texture>SpecularMap</texture>
+	<min>LINEAR</min><mag>LINEAR</mag><mip>POINT</mip>
+	<wrapu>REPEAT</wrapu><wrapv>REPEAT</wrapv>
+</sampler>
+<sampler name="LightBufferMapSampler" type="sampler2D">
+	<texture>LightBufferMap</texture>
+	<min>POINT</min><mag>POINT</mag><mip>NONE</mip>
+	<wrapu>CLAMP</wrapu><wrapv>CLAMP</wrapv>
+</sampler>
+<sampler name="ShadowMapSampler" type="sampler2D">
+	<texture>ShadowMap</texture>
+	<min>POINT</min><mag>POINT</mag><mip>NONE</mip>
+	<wrapu>CLAMP</wrapu><wrapv>CLAMP</wrapv>
+</sampler>
+
+<input name="VS_INPUT">
+	<field name="POSITION" lname="position" type="vec2" />
+	<field name="TEXCOORD0" lname="texcoord" type="vec2" />
+</input>
+<input name="VS_INPUT_COLOR">
+	<field name="POSITION" lname="position" type="vec2" />
+	<field name="TEXCOORD0" lname="texcoord" type="vec2" />
+	<field name="COLOR" lname="color" type="vec4" />
+</input>
+<input name="VS_INPUT_POSITION4">
+	<field name="POSITION" lname="position" type="vec4" />
+	<field name="TEXCOORD0" lname="texcoord" type="vec2" />
+	<field name="COLOR" lname="color" type="vec4" />
+</input>
+
+<output name="VS_OUTPUT">
+	<field name="POSITION" lname="position" type="vec4" prec="highp" />
+	<field name="TEXCOORD0" lname="texcoord" type="vec4" prec="highp" />
+	<field name="TEXCOORD1" lname="worldPos" type="vec3" prec="highp" />
+	<field name="TEXCOORD2" lname="shadtexcoord" type="vec4" prec="highp" />
+	<field name="TEXCOORD3" lname="viewNormal" type="vec3" prec="highp" />
+</output>
+<output name="VS_OUTPUT_COLOR">
+	<field name="POSITION" lname="position" type="vec4" prec="highp" />
+	<field name="TEXCOORD0" lname="texcoord" type="vec2" prec="mediump" />
+	<field name="COLOR" lname="color" type="vec4" prec="lowp" />
+</output>
+
+<code><![CDATA[
+//--------------------------------------------------------------------------------------------------
+// Automatic Parameters
+//--------------------------------------------------------------------------------------------------
+uniform highp mat4 	mWorld;
+uniform highp mat4 	mWorldIT;
+uniform highp mat4	mView;
+uniform highp mat4 	mWorldViewProjection;
+
+//--------------------------------------------------------------------------------------------------
+// Automatic Shadow Parameters
+//--------------------------------------------------------------------------------------------------
+uniform highp mat4 	mShadowTexture;
+
+//--------------------------------------------------------------------------------------------------
+// Automatic Fog Parameters
+//--------------------------------------------------------------------------------------------------
+uniform mediump vec3  	verticalFogColor;
+uniform highp vec2   	verticalFogStartEnd;
+
+//--------------------------------------------------------------------------------------------------
+// Automatic Colors Parameters
+//--------------------------------------------------------------------------------------------------
+uniform mediump vec3   	AmbientColor;
+uniform mediump vec3	SelfIllumColor2;
+
+uniform mediump float	RenderIfOccluded;
+uniform mediump vec4	ModulateColor;
+uniform mediump vec4	SaturateColor;
+
+//--------------------------------------------------------------------------------------------------
+// Material Parameters
+//--------------------------------------------------------------------------------------------------
+uniform mediump vec3   	DiffuseMapModulator;
+uniform mediump vec3   	SpecularMapModulator;
+uniform mediump vec3   	SelfIllumColor;
+uniform mediump float  	SpecularLevel;
+
+//--------------------------------------------------------------------------------------------------
+// Vertex shader code
+//--------------------------------------------------------------------------------------------------
+VS_OUTPUT vs(VS_NOSKIN_INPUT vIn)
+{
+	VS_OUTPUT Out;
+	Out.position = mul(vIn.position0, mWorldViewProjection);
+	Out.texcoord.xy = vIn.texcoord;
+	Out.worldPos = mul(vIn.position0,mWorld).xyz;
+#if ENGINE_HAS_SHADOW
+	Out.shadtexcoord = mul(vIn.position0, mShadowTexture);
+#endif
+	Out.viewNormal = mul(normalize(mul(vIn.normal0, mat3(mWorldIT)).xyz), mat3(mView)).xyz;//TEMP
+
+	return Out;
+}
+
+float4 ps(VS_OUTPUT vIn)
+{
+	//
+	// Get the diffuse color from the diffuse map
+	float3 diffuseMapTexel = tex2D(DiffuseMapSampler, vIn.texcoord.xy).rgb * DiffuseMapModulator;
+
+#if USE_SPECULAR_MAP
+	//
+	// Get the specular color from the specular map
+	float3 specularMapTexel = tex2D(SpecularMapSampler, vIn.texcoord.xy).rgb * SpecularMapModulator;
+#endif
+
+	//
+	// Compute screen position
+	half2 ScreenPos = gl_FragCoord.xy * SCREEN_SIZE.zw;
+	ScreenPos.y = 1.0 - ScreenPos.y;
+
+	//
+	// LightBuffer values
+	float4 lightsparams     = tex2D(LightBufferMapSampler, ScreenPos);
+	float3 diffuse_color    = lightsparams.xyz;
+	mediump float  specular_factor  = lightsparams.w;
+
+	//
+	// Final color
+	float3 C = AmbientColor;
+
+#if USE_SPECULAR_MAP
+	//
+	// Compute Blinn
+	C += Blinn(diffuseMapTexel, diffuse_color, specularMapTexel, SpecularLevel, vec2(1.0,specular_factor));
+#else
+	C += diffuseMapTexel * diffuse_color;
+#endif
+
+	//
+	// Final color += self illumination term
+	C += SelfIllumColor + SelfIllumColor2;
+
+#if ENGINE_HAS_SHADOW
+    //
+    // Shadow
+	C *= ComputeShadow(vIn.shadtexcoord, ShadowMapSampler);
+#endif
+
+#if USE_SILHOUETTE
+	//
+	// Silhouette Effect (Outline, Ghost, Invisibility)
+	C = LightingComputeSilhouette(C, vIn.worldPos, vIn.viewNormal, mView);
+#endif
+
+#if USE_OCCLUDED
+	//
+	// Modulate + Saturate
+	//C *= ModulateColor;	C += SaturateColor;
+	C = (1.0 - RenderIfOccluded) * C + RenderIfOccluded * (C * ModulateColor.rgb + SaturateColor.rgb);
+#endif
+
+	//
+	// Fog
+	C = ApplyVFog(C, vIn.worldPos.z, verticalFogColor, verticalFogStartEnd);
+
+    //
+    // Alpha channel is used by FXAA
+    return FXAALuminance(C);
+}
+
+]]></code>
+
+<tech name="Solid">
+	<define name="FEATURE_FLAGS" value="15" />
+	<vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" />
+	<ps name="ps" />
+</tech>
+<!---
+<tech name="SolidSilhouette">
+	<define name="FEATURE_FLAGS" value="31" />
+	<vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" />
+	<ps name="ps" />
+</tech>
+--->
+
+<tech name="Solid0"><define name="FEATURE_FLAGS" value="0" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid1"><define name="FEATURE_FLAGS" value="1" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid2"><define name="FEATURE_FLAGS" value="2" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid3"><define name="FEATURE_FLAGS" value="3" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid4"><define name="FEATURE_FLAGS" value="4" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid5"><define name="FEATURE_FLAGS" value="5" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid6"><define name="FEATURE_FLAGS" value="6" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid7"><define name="FEATURE_FLAGS" value="7" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid8"><define name="FEATURE_FLAGS" value="8" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid9"><define name="FEATURE_FLAGS" value="9" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid10"><define name="FEATURE_FLAGS" value="10" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid11"><define name="FEATURE_FLAGS" value="11" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid12"><define name="FEATURE_FLAGS" value="12" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid13"><define name="FEATURE_FLAGS" value="13" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid14"><define name="FEATURE_FLAGS" value="14" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid15"><define name="FEATURE_FLAGS" value="15" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<!---
+<tech name="Solid16"><define name="FEATURE_FLAGS" value="16" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid17"><define name="FEATURE_FLAGS" value="17" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid18"><define name="FEATURE_FLAGS" value="18" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid19"><define name="FEATURE_FLAGS" value="19" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid20"><define name="FEATURE_FLAGS" value="20" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid21"><define name="FEATURE_FLAGS" value="21" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid22"><define name="FEATURE_FLAGS" value="22" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid23"><define name="FEATURE_FLAGS" value="23" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid24"><define name="FEATURE_FLAGS" value="24" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid25"><define name="FEATURE_FLAGS" value="25" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid26"><define name="FEATURE_FLAGS" value="26" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid27"><define name="FEATURE_FLAGS" value="27" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid28"><define name="FEATURE_FLAGS" value="28" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid29"><define name="FEATURE_FLAGS" value="29" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid30"><define name="FEATURE_FLAGS" value="30" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="Solid31"><define name="FEATURE_FLAGS" value="31" /><vs name="vs" input="VS_NOSKIN_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+--->
+
+</glfx>

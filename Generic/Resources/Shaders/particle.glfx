@@ -1,0 +1,150 @@
+<!---
+//--------------------------------------------------------------------------------------------------
+// Particle System (rev 2)
+//--------------------------------------------------------------------------------------------------
+--->
+<glfx>
+
+<include name="lib/platform.glfxh" />
+<include name="lib/lighting.glfxh" />
+
+<texture name="DiffuseMap" />
+<texture name="NormalMap" />
+<texture name="Animated1Map" />
+<texture name="Animated2Map" />
+
+<sampler name="DiffuseMapSampler" type="sampler2D">
+	<texture>DiffuseMap</texture>
+	<min>LINEAR</min><mag>LINEAR</mag><mip>POINT</mip>
+	<wrapu>CLAMP</wrapu><wrapv>CLAMP</wrapv>
+</sampler>
+<sampler name="NormalMapSampler" type="sampler2D">
+	<texture>NormalMap</texture>
+	<min>LINEAR</min><mag>LINEAR</mag><mip>POINT</mip>
+	<wrapu>CLAMP</wrapu><wrapv>CLAMP</wrapv>
+</sampler>
+<sampler name="Animated1MapSampler" type="sampler2D">
+	<texture>Animated1Map</texture>
+	<min>LINEAR</min><mag>LINEAR</mag><mip>POINT</mip>
+	<wrapu>CLAMP</wrapu><wrapv>CLAMP</wrapv>
+</sampler>
+<sampler name="Animated2MapSampler" type="sampler2D">
+	<texture>Animated2Map</texture>
+	<min>LINEAR</min><mag>LINEAR</mag><mip>POINT</mip>
+	<wrapu>CLAMP</wrapu><wrapv>CLAMP</wrapv>
+</sampler>
+
+<input name="VS_INPUT">
+	<field name="POSITION" lname="position" type="vec3" />
+	<field name="COLOR" lname="color" type="vec4" />
+	<field name="TEXCOORD0" lname="texcoord" type="vec2" />
+</input>
+
+<output name="VS_OUTPUT">
+	<field name="POSITION" lname="position" type="vec4" prec="highp" />
+	<field name="COLOR" lname="color" type="vec4" prec="mediump" />
+	<field name="TEXCOORD0" lname="texcoord" type="vec2" prec="highp" />
+</output>
+
+<output name="VS_NORMALMAP_OUTPUT">
+	<field name="POSITION" lname="position" type="vec4" prec="highp" />
+	<field name="COLOR" lname="color" type="vec4" prec="mediump" />
+	<field name="TEXCOORD0" lname="texcoord" type="vec2" prec="highp" />
+	<field name="TEXCOORD1" lname="Ldir" type="vec3" prec="highp" />
+	<field name="TEXCOORD2" lname="Vdir" type="vec3" prec="highp" />
+</output>
+
+<code><![CDATA[
+//--------------------------------------------------------------------------------------------------
+// Constants
+//--------------------------------------------------------------------------------------------------
+#define Shininess 5.0
+
+//--------------------------------------------------------------------------------------------------
+// Parametters
+//--------------------------------------------------------------------------------------------------
+uniform float4x4	mWorldView;
+uniform float4x4	mWorldViewProj;
+uniform float4		LightVector;
+uniform float4		LightColor;
+uniform float4		AnimatedTextureBlendFactor;
+
+//--------------------------------------------------------------------------------------------------
+// Vertex shader 
+//--------------------------------------------------------------------------------------------------
+VS_OUTPUT vs(VS_INPUT vIn)
+{
+	VS_OUTPUT vOut;
+	
+	float4 Pos = vec4(vIn.position, 1.0);
+	
+	vOut.position = mul( Pos, mWorldViewProj);
+	vOut.texcoord = vIn.texcoord;
+	vOut.color = vIn.color;
+	
+        return vOut;
+}
+VS_NORMALMAP_OUTPUT vs_normalmap(VS_INPUT vIn)
+{
+	VS_NORMALMAP_OUTPUT vOut;
+	
+	float4 Pos = vec4(vIn.position, 1.0);
+	
+	vOut.position = mul( Pos, mWorldViewProj);
+	vOut.texcoord = vIn.texcoord;
+	vOut.color = vIn.color;
+	
+        float3 WorldViewPos = mul(Pos, mWorldView).xyz;
+        vOut.Ldir = normalize(mul(LightVector.xyz, mat3(mWorldView)) - WorldViewPos);
+        vOut.Vdir = normalize(-WorldViewPos);
+	
+        return vOut;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+// Pixel shader 
+//--------------------------------------------------------------------------------------------------
+float4 lit(half LdotN, half HdotN, half s)
+{
+	return vec4(1.0, max(LdotN,0.0), step(0.0,LdotN) * max(HdotN,0.0) * s, 1.0);
+}
+
+float4 ps(VS_OUTPUT vIn)
+{
+	float4 texcolor = vIn.color;
+#if ANIMMAP
+	float4 texcolor1 = tex2D(Animated1MapSampler, vIn.texcoord);
+	float4 texcolor2 = tex2D(Animated2MapSampler, vIn.texcoord);
+	texcolor *= mix(texcolor1, texcolor2, AnimatedTextureBlendFactor.x);
+#else
+	texcolor *= tex2D(DiffuseMapSampler, vIn.texcoord);
+#endif	
+	return texcolor;
+}
+float4 ps_normalmap(VS_NORMALMAP_OUTPUT vIn)
+{
+	float4 texcolor = vIn.color;
+#if ANIMMAP
+	float4 texcolor1 = tex2D(Animated1MapSampler, vIn.texcoord);
+	float4 texcolor2 = tex2D(Animated2MapSampler, vIn.texcoord);
+	texcolor *= mix(texcolor1, texcolor2, AnimatedTextureBlendFactor.x);
+#else
+	texcolor *= tex2D(DiffuseMapSampler, vIn.texcoord);
+#endif
+
+	float3 normal = UnpackNormalMap(NormalMapSampler, vIn.texcoord);
+	float3 H = normalize(vIn.Ldir + vIn.Vdir);
+	float4 lighting = lit(dot(vIn.Ldir, normal), dot(H, normal), Shininess);
+	texcolor.rgb *= (lighting.y + lighting.z) * LightColor.rgb;
+
+	return texcolor;
+}
+]]></code>
+
+<tech name="NoNormalNoAnim"><define name="ANIMMAP" value="0" /><vs name="vs" input="VS_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="NormalNoAnim"><define name="ANIMMAP" value="0" /><vs name="vs_normalmap" input="VS_INPUT" output="VS_NORMALMAP_OUTPUT" /><ps name="ps_normalmap" /></tech>
+<tech name="NoNormalAnim"><define name="ANIMMAP" value="1" /><vs name="vs" input="VS_INPUT" output="VS_OUTPUT" /><ps name="ps" /></tech>
+<tech name="NormalAnim"><define name="ANIMMAP" value="1" /><vs name="vs_normalmap" input="VS_INPUT" output="VS_NORMALMAP_OUTPUT" /><ps name="ps_normalmap" /></tech>
+
+</glfx>

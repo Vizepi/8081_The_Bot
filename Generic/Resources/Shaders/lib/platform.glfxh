@@ -1,0 +1,66 @@
+<!--- // platform.glfxh -->
+<glfx>
+
+<code><![CDATA[
+
+//--------------------------------------------------------------------------------------------------
+// Platform specific constants and defines (rev 2)
+//--------------------------------------------------------------------------------------------------
+
+#define ISOLATE invariant
+#define TEXTURELODBIAS MipLODBias
+#define DEFAULT_TEXTURELODBIAS 0.0
+
+//
+// Define value above which pixel are discarded in alpha test
+const mediump float 	INT_ALPHA_REF 		= 150.0;
+const lowp float 	FLOAT_ALPHA_REF 	= INT_ALPHA_REF / 255.0;
+
+//
+// define HLSL types
+#define half	mediump float
+#define half2	mediump vec2
+#define half3	mediump vec3
+#define half4	mediump vec4
+
+#define half2x2	mediump mat2
+#define half3x3	mediump mat3
+#define half4x4	mediump mat4
+
+#define float2	highp vec2
+#define float3	highp vec3
+#define float4	highp vec4
+
+#define float2x2	highp mat2
+#define float3x3	highp mat3
+#define float4x4	highp mat4
+
+//
+// Loop keyword
+#define LOOP
+
+#define saturate(X)	clamp(X,0.0,1.0)
+#define tex2D		texture2D
+#define mul(A,B)	(A * B)
+#define tex2Dlod	texture2DLod
+
+const float2 VPOS_offset = vec2(0.0,0.0);
+
+//
+// Disable FXAA on iOS for now
+float4 FXAALuminance(float3 color)
+{
+    const float3 RGB_TO_LUMA = vec3(0.299, 0.587, 0.114);
+    return(vec4(color, dot(RGB_TO_LUMA, sqrt(saturate(color)))));
+}
+
+//
+// Screen resolution
+uniform mediump float	SCREENW;
+uniform mediump float	SCREENH;
+uniform mediump float	HALFSCREENW;
+uniform mediump float	HALFSCREENH;
+uniform float4	SCREEN_SIZE;
+
+]]></code>
+</glfx>

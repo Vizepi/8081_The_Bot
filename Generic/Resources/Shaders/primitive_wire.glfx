@@ -1,0 +1,55 @@
+
+<!--- // Singletexture.glfx -->
+<glfx>
+
+<input name="VS_INPUT">
+	<field name="POSITION" lname="position" type="vec4" />
+<!--	<field name="TEXCOORD0" lname="texcoord" type="vec2" />
+	<field name="TANGENT" lname="tangent" type="vec3" />
+	<field name="BINORMAL" lname="binormal" type="vec3" />
+	<field name="NORMAL" lname="normal" type="vec3" /> -->
+	<field name="COLOR" lname="color" type="vec3" />
+</input>
+
+<output name="VS_OUTPUT">
+	<field name="POSITION" lname="position" type="vec4" prec="highp" />
+	<field name="COLOR" lname="color" type="vec4" prec="mediump" />
+</output>
+
+<code><![CDATA[
+//--------------------------------------------------------------------------------------------------
+// Pick buffer
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+// Parameters
+//--------------------------------------------------------------------------------------------------
+uniform highp mat4  	mWorldViewProjection;
+uniform mediump vec4	DiffuseColor;
+
+//--------------------------------------------------------------------------------------------------
+// Vertex shader code
+//--------------------------------------------------------------------------------------------------
+VS_OUTPUT vs(VS_INPUT vIn)
+{
+	VS_OUTPUT vOut;
+	vOut.position = vIn.position * mWorldViewProjection;
+	vOut.color    = vec4(vIn.color, 1);
+	return(vOut);
+}
+
+//--------------------------------------------------------------------------------------------------
+// Pixel shader code
+//--------------------------------------------------------------------------------------------------
+lowp vec4 ps(VS_OUTPUT vIn)
+{
+	return(DiffuseColor * vIn.color);
+}
+
+]]></code>
+
+<tech name="DefaultTechnique">
+	<vs name="vs" input="VS_INPUT" output="VS_OUTPUT" />
+	<ps name="ps" />
+</tech>
+</glfx>

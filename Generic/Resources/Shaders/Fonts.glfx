@@ -1,0 +1,109 @@
+<!--- // Singletexture.glfx -->
+<glfx>
+<texture name="TextureMap" />
+<texture name="TileSet" />
+
+<sampler name="TextureMapSampler" type="sampler2D">
+	<texture>TextureMap</texture>
+	<min>LINEAR</min><mag>LINEAR</mag><mip>NONE</mip>
+	<wrapu>CLAMP</wrapu><wrapv>CLAMP</wrapv>
+</sampler>
+<sampler name="TileSetSampler" type="sampler2D">
+	<texture>TileSet</texture>
+	<min>LINEAR</min><mag>LINEAR</mag><mip>NONE</mip>
+	<wrapu>CLAMP</wrapu><wrapv>CLAMP</wrapv>
+</sampler>
+
+<input name="VS_INPUT">
+	<field name="POSITION" lname="position" type="vec2" />
+	<field name="TEXCOORD0" lname="texcoord" type="vec2" />
+	<field name="COLOR" lname="color" type="vec4" />
+</input>
+
+<output name="VS_OUTPUT">
+	<field name="POSITION" lname="position" type="vec4" prec="highp" />
+	<field name="TEXCOORD0" lname="texcoord" type="vec2" prec="mediump" />
+	<field name="COLOR" lname="color" type="vec4" />
+</output>
+
+<code><![CDATA[
+//
+// Transformations parameters
+//
+uniform highp mat4 WorldViewProjection;
+
+//
+// DiffuseColor Color
+//
+uniform mediump vec4 DiffuseColor;
+uniform mediump vec4 SCREEN_SIZE;
+
+uniform mediump vec2	TextureMapSize;
+uniform mediump vec2	TileSetSize;
+
+//--------------------------------------------------------------------------------------------------
+// 2D elements in clip-space [-1,+1] with position.xy and texcoord.xy
+//--------------------------------------------------------------------------------------------------
+VS_OUTPUT vs(VS_INPUT vIn)
+{
+	VS_OUTPUT	vOut;
+
+	vOut.texcoord = vIn.texcoord;
+	vOut.position = vec4(vIn.position,0,1) * WorldViewProjection;
+	vOut.color = vIn.color;
+
+	return vOut;
+}
+
+//--------------------------------------------------------------------------------------------------
+// Pixel shader code
+//--------------------------------------------------------------------------------------------------
+lowp vec4 ps(VS_OUTPUT vIn)
+{
+	lowp vec4 textureColor = texture2D(TextureMapSampler, vIn.texcoord);
+	return vec4(1.0, 1.0, 1.0, textureColor.a) * vIn.color * DiffuseColor;
+}
+
+]]></code>
+
+<tech name="DefaultTechnique">
+	<vs name="vs" input="VS_INPUT" output="VS_OUTPUT" />
+	<ps name="ps" />
+</tech>
+<tech name="DefaultTechniqueSC">
+	<vs name="vs_screenspace" input="VS_INPUT_COLOR" output="VS_OUTPUT_COLOR" />
+	<ps name="psSC" />
+</tech>
+<tech name="DefaultTechnique3">
+	<vs name="vs_position4" input="VS_INPUT_POSITION4" output="VS_OUTPUT_COLOR" />
+	<ps name="ps3" />
+</tech>
+<tech name="DefaultTechniquePickBuffer">
+	<vs name="vs_position4" input="VS_INPUT_POSITION4" output="VS_OUTPUT_COLOR" />
+	<ps name="psPickBuffer" />
+</tech>
+<tech name="DefaultTechniqueFrozen">
+	<vs name="vs_position4" input="VS_INPUT_POSITION4" output="VS_OUTPUT_COLOR" />
+	<ps name="psFrozen" />
+</tech>
+<tech name="DefaultTechnique_Tile">
+	<vs name="vs" input="VS_INPUT" output="VS_OUTPUT" />
+	<ps name="ps_tile" />
+</tech>
+<tech name="DefaultTechniqueSC_Tile">
+	<vs name="vs_screenspace" input="VS_INPUT_COLOR" output="VS_OUTPUT_COLOR" />
+	<ps name="psSC_tile" />
+</tech>
+<tech name="DefaultTechnique3_Tile">
+	<vs name="vs_position4" input="VS_INPUT_POSITION4" output="VS_OUTPUT_COLOR" />
+	<ps name="ps3_tile" />
+</tech>
+<tech name="DefaultTechniquePickBuffer_Tile">
+	<vs name="vs_position4" input="VS_INPUT_POSITION4" output="VS_OUTPUT_COLOR" />
+	<ps name="psPickBuffer_tile" />
+</tech>
+<tech name="DefaultTechniqueFrozen_Tile">
+	<vs name="vs_position4" input="VS_INPUT_POSITION4" output="VS_OUTPUT_COLOR" />
+	<ps name="psFrozen_tile" />
+</tech>
+</glfx>

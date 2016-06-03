@@ -1,0 +1,239 @@
+<!--- // Light pass (rev 2) -->
+<glfx>
+
+<include name="lib/platform.glfxh" />
+<include name="lib/lighting.glfxh" />
+
+<texture name="NormalShininessMap" />
+<texture name="DepthMap" />
+
+<sampler name="NormalShininessMapSampler" type="sampler2D">
+	<texture>NormalShininessMap</texture>
+	<min>POINT</min><mag>POINT</mag><mip>NONE</mip>
+	<wrapu>CLAMP</wrapu><wrapv>CLAMP</wrapv>
+</sampler>
+<sampler name="DepthMapSampler" type="sampler2D">
+	<texture>DepthMap</texture>
+	<min>POINT</min><mag>POINT</mag><mip>NONE</mip>
+	<wrapu>CLAMP</wrapu><wrapv>CLAMP</wrapv>
+</sampler>
+
+<input name="VS_INPUT">
+	<field name="POSITION" lname="position" type="vec2" />
+	<field name="TEXCOORD0" lname="texcoord" type="vec2" />
+</input>
+
+<output name="PS_INPUT">
+	<field name="POSITION" lname="position" type="vec4" prec="highp" />
+	<field name="TEXCOORD0" lname="texcoord_screen" type="vec4" prec="mediump" />
+</output>
+
+<code><![CDATA[
+//--------------------------------------------------------------------------------------------------
+// Defines
+//--------------------------------------------------------------------------------------------------
+#define MAX_DIRECTIONAL_LIGHT_PER_PASS  1
+#define MAX_POINT_LIGHT_PER_PASS        16
+
+//--------------------------------------------------------------------------------------------------
+// Viewport and scene
+//--------------------------------------------------------------------------------------------------
+uniform float4x4        mInverseViewProj;
+uniform float3          vCameraPosition;
+
+//--------------------------------------------------------------------------------------------------
+// Directionnal Light
+//--------------------------------------------------------------------------------------------------
+uniform float4			DirectionalLightVector[MAX_DIRECTIONAL_LIGHT_PER_PASS];
+uniform float4			DirectionalLightColor[MAX_DIRECTIONAL_LIGHT_PER_PASS];
+
+
+//--------------------------------------------------------------------------------------------------
+// Point Lights
+//--------------------------------------------------------------------------------------------------
+uniform float4          PointLight_Position_AttNear[MAX_POINT_LIGHT_PER_PASS];
+uniform float4          PointLight_Color_AttFar[MAX_POINT_LIGHT_PER_PASS];
+
+//--------------------------------------------------------------------------------------------------
+// Vertex shader code
+//--------------------------------------------------------------------------------------------------
+PS_INPUT vs(VS_INPUT In)
+{
+	PS_INPUT	Out;
+
+    // XY: texture coordinates (top,left) = (0,0)
+    Out.texcoord_screen.xy = In.texcoord;
+
+    // ZW: clip space coordinates (top,left) = (-1,+1)
+    Out.texcoord_screen.zw = In.position;
+        
+    // Output position
+	Out.position = vec4(In.position,1,1);
+
+	return Out;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+// Compute Point Light
+//--------------------------------------------------------------------------------------------------
+half4 ComputeDirectionalLightParams(
+        in  float3      world_position,
+        in  half3      world_normal,
+        in  half3      view_vector,
+        in  half 		shininess,
+        in  half3      light_vector,
+        in  half3      light_diffuse )
+{
+#ifndef NO_SPECULAR
+		half2 lighting         = BlinnFactor(world_normal, -light_vector, view_vector, shininess);
+		return( vec4(light_diffuse * lighting.x, ComputeLuminance(light_diffuse) * lighting.y) );
+#else
+		half lighting         = BlinnFactor(world_normal, -light_vector);
+		return( vec4(light_diffuse * lighting, 0 ));
+#endif
+}
+
+
+//--------------------------------------------------------------------------------------------------
+// Compute Point Light
+//--------------------------------------------------------------------------------------------------
+half4 ComputePointLightParams(
+        in  float3      world_position,
+        in  half3      world_normal,
+        in  half3      view_vector,
+        in  half 		shininess,
+        in  float3      light_position,
+        in  half3      light_diffuse,
+        in  float2      light_attenuation )
+{
+        highp float attenuation       = AttenutaionPointLight(world_position, light_position, light_attenuation);
+        half3 light_vector     = normalize(light_position - world_position);
+#ifndef NO_SPECULAR
+		half2 lighting         = BlinnFactor(world_normal, light_vector, view_vector, shininess) * attenuation;
+		return( vec4(light_diffuse * lighting.x, ComputeLuminance(light_diffuse) * lighting.y) );
+#else
+		half lighting         = BlinnFactor(world_normal, light_vector) * attenuation;
+		return( vec4(light_diffuse * lighting, 0) );
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+// Pixel Shader Code
+//--------------------------------------------------------------------------------------------------
+#define directional_light_count		1
+#define point_light_count			NUMPT
+
+float4 ps(PS_INPUT Vin)
+{
+	//
+	// Scale and Bias Normal / Shininess
+	float4 normal_shininess = tex2D(NormalShininessMapSampler, Vin.texcoord_screen.xy);
+	normal_shininess = normal_shininess * vec4(2.0, 2.0, 2.0, 128.0) - vec4(1.0, 1.0, 1.0, 0.0);
+	half3 world_normal = normalize(normal_shininess.xyz);
+	half shininess = normal_shininess.w;
+
+	//
+	// Reconstruct world position using inverse viewproj matrix
+	highp float	Z = GetZ(DepthMapSampler, Vin.texcoord_screen.xy);
+	float4 unproject_world_position = mul(vec4(Vin.texcoord_screen.zw,Z*2.0-1.0,1),mInverseViewProj);
+	float3 world_position = unproject_world_position.xyz / unproject_world_position.w;
+
+	//
+	// Camera/World Vector
+	half3 view_vector = normalize(vCameraPosition - world_position);
+
+	//
+	// Accumulate lights
+	float4 accum_light = vec4(0.0,0.0,0.0,0.0);
+	
+	//
+	// Directionnal Light
+	//
+#if directional_light_count == 1
+    {
+		int i = 0;
+        accum_light += ComputeDirectionalLightParams(
+            world_position, 
+            world_normal, 
+            view_vector, 
+            shininess, 
+            DirectionalLightVector[i].xyz,
+            DirectionalLightColor[i].rgb);
+    }
+#endif
+
+    //
+    // Point Light
+	//
+	for( int i = 0 ; i < point_light_count ; i += 1 )
+	{
+		// we're hitting some limit in the shader compiler
+		// if we use functions here, the shader compiles, but sliently fails to run
+		highp vec3 light_position = PointLight_Position_AttNear[i].xyz;
+		highp float atten = 1.0 - smoothstep(PointLight_Position_AttNear[i].w, PointLight_Color_AttFar[i].w, length(world_position - light_position));
+        half3 light_vector     = normalize(light_position - world_position);
+        half n_dot_l = dot(world_normal, light_vector);
+        half diffuse_factor = clamp(n_dot_l, 0.0, 1.0);
+#ifndef NO_SPECULAR
+		half3 half_vector = normalize(view_vector + light_vector);
+		half n_dot_h = dot(world_normal, half_vector);
+		half specular_factor = (n_dot_l < 0.0) || (n_dot_h < 0.0) ? 0.0 : pow(n_dot_h, shininess);
+
+		accum_light += vec4(PointLight_Color_AttFar[i].rgb * diffuse_factor,
+							ComputeLuminance(PointLight_Color_AttFar[i].rgb) * specular_factor);
+#else
+		accum_light += vec4(PointLight_Color_AttFar[i].rgb * diffuse_factor, 0);
+#endif
+	}
+
+#ifndef NO_SPECULAR
+	return accum_light;
+#else
+    return vec4(accum_light.xyz,1);
+#endif
+}
+
+]]></code>
+
+<tech name="directional_1_0"><define name="NUMPT" value="0" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_1"><define name="NUMPT" value="1" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_2"><define name="NUMPT" value="2" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_3"><define name="NUMPT" value="3" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_4"><define name="NUMPT" value="4" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_5"><define name="NUMPT" value="5" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_6"><define name="NUMPT" value="6" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_7"><define name="NUMPT" value="7" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_8"><define name="NUMPT" value="8" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<!---
+<tech name="directional_1_9"><define name="NUMPT" value="9" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_10"><define name="NUMPT" value="10" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_11"><define name="NUMPT" value="11" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_12"><define name="NUMPT" value="12" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_13"><define name="NUMPT" value="13" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_14"><define name="NUMPT" value="14" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_15"><define name="NUMPT" value="15" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="directional_1_16"><define name="NUMPT" value="16" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+--->
+
+<tech name="nospec_directional_1_0"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="0" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_1"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="1" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_2"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="2" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_3"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="3" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_4"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="4" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_5"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="5" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_6"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="6" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_7"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="7" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_8"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="8" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<!---
+<tech name="nospec_directional_1_9"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="9" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_10"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="10" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_11"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="11" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_12"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="12" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_13"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="13" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_14"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="14" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_15"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="15" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+<tech name="nospec_directional_1_16"><define name="NO_SPECULAR" value="1" /><define name="NUMPT" value="16" /><vs name="vs" input="VS_INPUT" output="PS_INPUT" /><ps name="ps" /></tech>
+--->
+
+</glfx>
