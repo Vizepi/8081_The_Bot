@@ -1,10 +1,19 @@
 
 include_directories(${SHSDK_INCLUDE_DIRS})
 
-set(SOURCES_PLUGIN_IMPL Level.cpp Level.hpp)
-source_group("" FILES ${SOURCES_PLUGIN_IMPL})
+set(SOURCES_LEVEL Level.cpp Level.hpp)
+source_group("Level" FILES ${SOURCES_LEVEL})
 
-set(SOURCES ${SOURCES_PLUGIN_IMPL}
+set(SOURCES_GROUND Ground.cpp Ground.hpp)
+source_group("Ground" FILES ${SOURCES_GROUND})
+
+set(SOURCES_LEVELLOADER LevelLoader.cpp LevelLoader.hpp)
+source_group("LevelLoader" FILES ${SOURCES_LEVELLOADER})
+
+set(SOURCES 
+	${SOURCES_LEVEL}
+	${SOURCES_GROUND}
+	${SOURCES_LEVELLOADER}
 )
 
 # Compile to use it on Runtime

@@ -13,11 +13,14 @@
         <scene_explorer scene_explorer_add_folder="Root">
             <scene_explorer_item scene_explorer_item_name="Root" scene_explorer_item_text="Root" scene_explorer_item_type="0" scene_explorer_item_expanded="false" scene_explorer_item_parent="NULL"/>
         </scene_explorer>
-        <recent_file_list max_recent_file="5"/>
+        <recent_file_list max_recent_file="5">
+            <recent_file name_file="wall_joint_0" type="level"/>
+            <recent_file name_file="wall_1024_high" type="prefab"/>
+            <recent_file name_file="wall_256_high" type="prefab"/>
+            <recent_file name_file="wall_512_high" type="prefab"/>
+            <recent_file name_file="test" type="level"/>
+        </recent_file_list>
     </editor_settings>
-    <extensions>
-        <extension name="Ext8081"/>
-    </extensions>
     <project_settings>
         <general>
             <setting name="generalname" value="Bobi_The_Bot"/>
@@ -52,4 +55,7 @@
             </mobile>
         </general>
     </project_settings>
+    <extensions>
+        <extension name="Ext8081"/>
+    </extensions>
 </project>

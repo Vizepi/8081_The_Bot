@@ -1,0 +1,6 @@
+<level id="test">
+	<ground seed="123456">
+		<sprite lib="bobi" id="ground_0" probability="1" />
+		<sprite lib="bobi" id="ground_1" probability="1" />
+	</ground>
+</level>

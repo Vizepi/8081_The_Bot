@@ -1,0 +1,24 @@
+<prefab engine_save_ver="1.3.1">
+    <preload>
+        <texture_list/>
+        <animated_texture_list/>
+        <sprite_texture_list>
+            <sprite_texture name="bobi.wall_1024.tga"/>
+        </sprite_texture_list>
+        <material_library_list/>
+        <submesh_list/>
+        <mesh_list/>
+        <prefab_list/>
+    </preload>
+    <layer_list>
+        <layer name="layer_default" show="true" position_x="0.000000" position_y="0.000000" position_z="0.000000" min_x="-512.000000" min_y="64.000000" max_x="512.000000" max_y="192.000000"/>
+        <layer name="layer_gui" show="true" position_x="0.000000" position_y="0.000000" position_z="0.000000" min_x="0.000000" min_y="0.000000" max_x="0.000000" max_y="0.000000"/>
+    </layer_list>
+    <object_list>
+        <entity2 name="sprite_bobi_wall_1024_001" position_x="0.000000" position_y="0.000000" position_z="0.000000" rotation_x="0.000000" rotation_y="0.000000" rotation_z="0.000000" scale_x="1.000000" scale_y="1.000000" scale_z="1.000000" layer="layer_default" show="true" color_r="1.000000" color_g="1.000000" color_b="1.000000" color_a="1.000000" pivot="bottom_left" pivot_custom_x="0.500000" pivot_custom_y="0.500000" sprite_library="bobi" sprite_name="wall_1024" blend_function="alpha"/>
+    </object_list>
+    <scene_explorer scene_explorer_add_folder="Root">
+        <scene_explorer_item scene_explorer_item_name="Root" scene_explorer_item_text="Root" scene_explorer_item_type="0" scene_explorer_item_expanded="false" scene_explorer_item_parent="NULL"/>
+        <scene_explorer_item scene_explorer_item_name="sprite_bobi_wall_1024_001" scene_explorer_item_text="sprite_bobi_wall_1024_001" scene_explorer_item_type="232" scene_explorer_item_expanded="false" scene_explorer_item_parent="Root"/>
+    </scene_explorer>
+</prefab>
