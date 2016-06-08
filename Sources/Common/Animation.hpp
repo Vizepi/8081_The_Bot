@@ -69,4 +69,4 @@ protected:
 	static Manager*			s_manager;
 };
 
-#endif // __8081_CHARACTER_HPP
+#endif // __8081_ANIMATION_HPP

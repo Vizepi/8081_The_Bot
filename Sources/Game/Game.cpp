@@ -59,5 +59,6 @@ void Game::OnTouchUp(int iTouch, float positionX, float positionY)
 
 void Game::OnTouchMove(int iTouch, float positionX, float positionY)
 {
-
+	// TODO : Comment when fix released
+	Level::OnTouchMove(iTouch, positionX, positionY);
 }

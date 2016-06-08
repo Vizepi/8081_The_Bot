@@ -10,9 +10,13 @@ source_group("Animation" FILES ${SOURCES_ANIMATION})
 set(SOURCES_TOOLS Tools.hpp Tools.cpp)
 source_group("Tools" FILES ${SOURCES_TOOLS})
 
+set(SOURCES_INPUT Input.hpp Input.cpp)
+source_group("Input" FILES ${SOURCES_INPUT})
+
 set(SOURCES 
 	${SOURCES_ANIMATION} 
 	${SOURCES_TOOLS}
+	${SOURCES_INPUT}
 )
 
 add_library(Common STATIC ${SOURCES})

@@ -35,7 +35,7 @@
 		position, 
 		70.0f, 
 		CShVector2(0.0f, -1.0f), 
-		150.0f);
+		600.0f);
 	m_animation = new Animation();
 	m_animation->Initialize(level, CShIdentifier("character_animation"), CShIdentifier("bobi"), CShString("character_top"), 8);
 	m_inputs[0] = ShInput::CreateInputPressed(
@@ -99,6 +99,18 @@
 		controllerPosition.m_x,
 		controllerPosition.m_y,
 		1.0f);
+	ShCamera::SetPosition(
+		ShCamera::GetCamera2D(),
+		CShVector3(
+			controllerPosition.m_x,
+			controllerPosition.m_y,
+			1000.0f));
+	ShCamera::SetTarget(
+		ShCamera::GetCamera2D(),
+		CShVector3(
+			controllerPosition.m_x,
+			controllerPosition.m_y,
+			0.0f));
 	if(0.0f != m_axisX || 0.0f != m_axisY)
 	{
 		ShEntity2::SetRotation(

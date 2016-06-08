@@ -34,9 +34,8 @@ void Level::Release(void)
 {
 	m_loader->Load(CShString("test"));
 	m_ground->Initialize(*m_loader, 20, 20, 10*1024, 10*1024);
-	m_character->Initialize(levelIdentifier);
-	s_character.Add(m_character);
-	ShInput::AddOnTouchMove(OnTouchMove);
+	//TODO : Uncomment when fix released
+	//ShInput::AddOnTouchMove(Level::OnTouchMove);
 }
 
 /*virtual*/ void Level::OnPlayStop(const CShIdentifier & levelIdentifier)
@@ -66,7 +65,13 @@ void Level::Release(void)
 
 /*virtual*/ void Level::OnPreUpdate(void)
 {
-	
+	static bool first = true;
+	if(first)
+	{
+		first = false;
+		m_character->Initialize(CShIdentifier("test"));
+		s_character.Add(m_character);
+	}
 }
 
 /*virtual*/ void Level::OnPostUpdate(float dt)
@@ -80,11 +85,7 @@ void Level::Release(void)
 	{
 		s_character[i]->OnTouchMove(iTouch, positionX, positionY);
 	}
-	static int ind = 0;
-	ind++;
-	ShEntity2::Create(CShIdentifier("test"), CShIdentifier(CShString("pix")+CShString::FromInt(ind)),
-		CShIdentifier("layer_default"), CShIdentifier("bobi"), CShIdentifier("pixel"),
-		CShVector3(positionX, positionY, 10.0f), CShEulerAngles_ZERO, CShVector3(1.0f, 1.0f, 1.0f));
+	ShLog(e_log_level_warning, e_log_type_game, 0, "Pos : %f %f", positionX, positionY);
 }
 
 /*static*/ void Level::SetReleaseEnabled(bool state)
