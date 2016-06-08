@@ -20,7 +20,7 @@ add_executable(8081 WIN32 ${SOURCES_MAIN} ${SOURCES_GAME})
 set_property(TARGET 8081 APPEND PROPERTY COMPILE_DEFINITIONS "SH_DEV=1")
 set_property(TARGET 8081 APPEND PROPERTY COMPILE_DEFINITIONS "SH_MASTER=1")
 
-target_link_libraries(8081 PluginLevel) # link with plugins
+target_link_libraries(8081 PluginLevel Common) # link with plugins
 
 target_link_libraries(8081 ${SHSDK_LIBRARIES} ${SHSDK_LIB_DIR}/StubUserSystem.lib)
 

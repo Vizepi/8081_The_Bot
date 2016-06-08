@@ -5,6 +5,7 @@
 #include <ShEngineExt/ShEngineExt.h>
 #include "Ground.hpp"
 #include "LevelLoader.hpp"
+#include "Character.hpp"
 
 class Level : public CShPlugin
 {
@@ -25,6 +26,8 @@ public:
 	virtual	void	OnPreUpdate			(void);
 	virtual	void	OnPostUpdate		(float dt);
 
+	static void		OnTouchMove			(int iTouch, float positionX, float positionY);
+
 	static void		SetReleaseEnabled	(bool state);
 	static bool		IsRealeseEnabled	(void);
 
@@ -32,10 +35,12 @@ public:
 
 protected:
 
-	Ground*			m_ground;
-	LevelLoader*	m_loader;
+	Ground*				m_ground;
+	LevelLoader*		m_loader;
+	Character*			m_character;
 
-	static bool s_releaseEnabled;
+	static bool			s_releaseEnabled;
+	static CShArray<Character*>	s_character;
 
 };
 

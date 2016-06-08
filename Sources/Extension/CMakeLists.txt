@@ -13,7 +13,8 @@ endif(WIN32)
 source_group("dll" FILES ${SOURCES_DLLMAIN})
 
 set(EXTENSION_SOURCES ${SOURCES_DLLMAIN} ${SOURCES_EXTENSION}) # compile extension sources
-set(PLUGIN_OBJECTS $<TARGET_OBJECTS:PluginLevel_Editor>) # embed plugin objects
+set(PLUGIN_OBJECTS 
+	$<TARGET_OBJECTS:PluginLevel_Editor>) # embed plugin objects
 
 add_library(Ext8081 SHARED ${EXTENSION_SOURCES} ${PLUGIN_OBJECTS})
 set_property(TARGET Ext8081 PROPERTY FOLDER "Editor")
@@ -34,6 +35,6 @@ endif (WIN32)
 
 set_property(TARGET Ext8081 PROPERTY PREFIX "")
 
-target_link_libraries(Ext8081 ${SHSDK_EDITOR_LIBRARIES})
+target_link_libraries(Ext8081 ${SHSDK_EDITOR_LIBRARIES} Common)
 
 file(COPY "Ext8081.configext" DESTINATION "${SHINE_EDITOR_EXT_DIR}")

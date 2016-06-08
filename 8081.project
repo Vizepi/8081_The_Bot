@@ -21,6 +21,9 @@
             <recent_file name_file="test" type="level"/>
         </recent_file_list>
     </editor_settings>
+    <extensions>
+        <extension name="Ext8081"/>
+    </extensions>
     <project_settings>
         <general>
             <setting name="generalname" value="Bobi_The_Bot"/>
@@ -55,7 +58,4 @@
             </mobile>
         </general>
     </project_settings>
-    <extensions>
-        <extension name="Ext8081"/>
-    </extensions>
 </project>

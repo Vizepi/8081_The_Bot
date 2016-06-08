@@ -10,10 +10,14 @@ source_group("Ground" FILES ${SOURCES_GROUND})
 set(SOURCES_LEVELLOADER LevelLoader.cpp LevelLoader.hpp)
 source_group("LevelLoader" FILES ${SOURCES_LEVELLOADER})
 
+set(SOURCES_CHARACTER Character.cpp Character.hpp)
+source_group("Character" FILES ${SOURCES_CHARACTER})
+
 set(SOURCES 
 	${SOURCES_LEVEL}
 	${SOURCES_GROUND}
 	${SOURCES_LEVELLOADER}
+	${SOURCES_CHARACTER}
 )
 
 # Compile to use it on Runtime
